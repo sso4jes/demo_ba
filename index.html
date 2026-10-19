@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Performance & Revenue Analytics</title>
+<script src="vendor/chart.umd.min.js"></script>
+<script>if(!window.Chart){document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');}</script>
+<style>
+  :root{
+    --bg:#f1f4f9; --card:#ffffff; --border:#e5eaf1; --text:#1e293b; --muted:#64748b;
+    --blue:#2563eb; --blue-l:#dbeafe; --green:#16a34a; --red:#dc2626; --orange:#f59e0b;
+    --purple:#8b5cf6; --teal:#14b8a6; --pink:#ec4899;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  .container{max-width:1560px;margin:0 auto;padding:18px 22px 40px;}
+  /* Header */
+  .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+  .header h1{font-size:24px;color:#1d4ed8;font-weight:700;}
+  .header p{color:var(--muted);font-size:13px;margin-top:2px;}
+  .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  select,input[type=date]{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;color:var(--text);cursor:pointer;}
+  select:focus,input:focus{outline:2px solid var(--blue-l);}
+  .btn{padding:8px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .btn:hover{background:#1d4ed8;}
+  .btn.secondary{background:#fff;color:var(--text);border:1px solid var(--border);}
+  .custom-range{display:none;gap:6px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:8px;padding:4px 8px;}
+  .custom-range.show{display:flex;}
+  .custom-range span{color:var(--muted);font-size:12px;}
+  /* KPI cards */
+  .kpi-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:12px;margin-bottom:16px;}
+  @media(max-width:1400px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+  @media(max-width:760px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s, transform .15s;}
+  .kpi:hover{box-shadow:0 4px 16px rgba(37,99,235,.12);transform:translateY(-2px);}
+  .kpi .kpi-head{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;font-weight:600;margin-bottom:8px;}
+  .kpi .icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;}
+  .kpi .value{font-size:26px;font-weight:700;color:#0f172a;}
+  .kpi .value small{font-size:14px;font-weight:600;color:#334155;}
+  .kpi .delta{font-size:11.5px;margin-top:6px;font-weight:600;}
+  .delta.up{color:var(--green);} .delta.down{color:var(--red);} .delta.flat{color:var(--muted);}
+  .delta .prev{color:var(--muted);font-weight:400;}
+  /* Grid & cards */
+  .section-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#1e3a8a;margin:22px 0 12px;}
+  .section-title .dot{width:8px;height:8px;border-radius:2px;background:var(--blue);}
+  .grid{display:grid;gap:12px;margin-bottom:4px;}
+  .g-4{grid-template-columns:repeat(4,1fr);}
+  .g-3{grid-template-columns:repeat(3,1fr);}
+  .g-5{grid-template-columns:1.1fr 1fr 1.4fr 1fr;}
+  .g-deal{grid-template-columns:1.2fr 1fr 1fr 1.3fr 1fr;}
+  .g-bottom{grid-template-columns:1.1fr 1fr 1fr 1fr;}
+  @media(max-width:1200px){.g-4,.g-3,.g-5,.g-deal,.g-bottom{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:700px){.g-4,.g-3,.g-5,.g-deal,.g-bottom{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .card h3{font-size:13.5px;font-weight:700;color:#334155;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .card h3 .sub{font-size:11px;color:var(--muted);font-weight:500;}
+  .chart-box{position:relative;height:220px;}
+  .chart-box.tall{height:250px;}
+  .chart-box.short{height:180px;}
+  /* Target */
+  .target-amt{font-size:24px;font-weight:800;color:#0f172a;margin:4px 0 10px;}
+  .target-row{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px;}
+  .target-row .sw{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+  .target-row b{margin-left:auto;}
+  .mini-progress{height:8px;background:#eef2f7;border-radius:6px;overflow:hidden;margin:10px 0 4px;}
+  .mini-progress > div{height:100%;border-radius:6px;background:var(--blue);}
+  /* Funnel (lead) */
+  .funnel{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0;}
+  .funnel .stage{color:#fff;font-size:11.5px;text-align:center;padding:8px 6px;border-radius:4px;cursor:pointer;transition:opacity .15s;}
+  .funnel .stage:hover{opacity:.85;}
+  .funnel .stage b{display:block;font-size:14px;}
+  .funnel-arrow{font-size:11px;color:var(--muted);}
+  /* Value funnel list */
+  .vfunnel{display:flex;flex-direction:column;gap:8px;}
+  .vfunnel .row{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;}
+  .vfunnel .row:hover .lbl{color:var(--blue);}
+  .vfunnel .lbl{width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#475569;}
+  .vfunnel .bar-wrap{flex:1;height:16px;border-radius:3px;background:#f1f5f9;overflow:hidden;}
+  .vfunnel .bar{height:100%;border-radius:3px;}
+  .vfunnel .val{width:86px;text-align:right;font-weight:600;color:#334155;flex-shrink:0;font-size:11.5px;}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;} tbody tr.clickable:hover{background:#f8fafc;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:600;}
+  .pill.blue{background:#dbeafe;color:#1d4ed8;} .pill.green{background:#dcfce7;color:#15803d;}
+  .pill.orange{background:#fef3c7;color:#b45309;} .pill.red{background:#fee2e2;color:#b91c1c;}
+  .pill.gray{background:#f1f5f9;color:#475569;} .pill.purple{background:#ede9fe;color:#6d28d9;}
+  .tag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  /* Gauge center text */
+  .gauge-wrap{position:relative;height:200px;}
+  .gauge-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-35%);text-align:center;pointer-events:none;}
+  .gauge-center .big{font-size:24px;font-weight:800;color:#0f172a;}
+  /* Priority rows */
+  .prio-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
+  .prio-row:last-child{border-bottom:none;}
+  .prio-row .pdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .prio-row .pname{width:64px;font-weight:600;}
+  .prio-row .pstat{color:var(--muted);width:110px;}
+  .prio-row b{margin-left:auto;}
+  /* HBar list (revenue by category) */
+  .hbar-row{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:9px;cursor:pointer;}
+  .hbar-row:hover .hb-lbl{color:var(--blue);}
+  .hb-lbl{width:118px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#475569;}
+  .hb-track{flex:1;height:12px;background:#f1f5f9;border-radius:6px;overflow:hidden;}
+  .hb-fill{height:100%;background:var(--blue);border-radius:6px;}
+  .hb-val{width:104px;text-align:right;font-weight:600;font-size:11.5px;color:#334155;flex-shrink:0;}
+  /* Rev summary */
+  .rev-box{border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+  .rev-box .ric{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0;}
+  .rev-box .t{font-size:11px;color:var(--muted);}
+  .rev-box .v{font-size:19px;font-weight:800;}
+  /* Progress bars in tables */
+  .prog-track{height:7px;background:#eef2f7;border-radius:5px;width:100px;display:inline-block;vertical-align:middle;margin-right:8px;}
+  .prog-fill{height:100%;border-radius:5px;}
+  /* Activity feed */
+  .feed{max-height:300px;overflow-y:auto;}
+  .feed-item{display:flex;gap:10px;padding:8px 2px;border-bottom:1px solid #f1f5f9;font-size:12px;}
+  .feed-item:last-child{border-bottom:none;}
+  .feed-item .av{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+  .feed-item .ft{color:var(--muted);font-size:10.5px;}
+  .feed-item b{color:#0f172a;}
+  .feed-item .rec{color:var(--blue);font-weight:600;cursor:pointer;}
+  .feed-item .rec:hover{text-decoration:underline;}
+  .avatar{width:26px;height:26px;border-radius:50%;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;margin-right:8px;vertical-align:middle;}
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:100;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;width:min(860px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);}
+  .modal-head h2{font-size:16px;color:#0f172a;}
+  .modal-close{background:#f1f5f9;border:none;width:30px;height:30px;border-radius:8px;font-size:16px;cursor:pointer;color:#475569;}
+  .modal-body{padding:16px 20px;overflow-y:auto;}
+  .modal-summary{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .modal-summary .ms{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 14px;min-width:120px;}
+  .modal-summary .ms .t{font-size:11px;color:var(--muted);}
+  .modal-summary .ms .v{font-size:18px;font-weight:700;color:#0f172a;}
+  /* Orders stacked */
+  .order-row{margin-bottom:14px;font-size:12px;cursor:pointer;}
+  .order-row:hover .o-lbl{color:var(--blue);}
+  .o-lbl{font-weight:600;color:#334155;margin-bottom:5px;display:flex;justify-content:space-between;}
+  .o-track{display:flex;height:18px;border-radius:5px;overflow:hidden;background:#f1f5f9;}
+  .o-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:10px;}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <h1>Business Performance &amp; Revenue Analytics</h1>
+      <p>Track your leads, conversions, quotations, deals, revenue and operations in real time.</p>
+    </div>
+    <div class="filters">
+      <select id="rangeSelect">
+        <option value="today">Today</option>
+        <option value="7">Last 7 Days</option>
+        <option value="30" selected>Last 30 Days</option>
+        <option value="custom">Custom Date Range</option>
+      </select>
+      <div class="custom-range" id="customRange">
+        <input type="date" id="dateFrom"> <span>to</span> <input type="date" id="dateTo">
+      </div>
+      <select id="userFilter"><option value="all">All Users</option></select>
+      <select id="deptFilter"><option value="all">All Departments</option></select>
+      <button class="btn" id="exportBtn">&#8613; Export</button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- SECTION: LEAD ANALYTICS -->
+  <div class="section-title"><span class="dot"></span>Lead Analytics</div>
+  <div class="grid g-4">
+    <div class="card">
+      <h3>&#127919; Target Achievement <span class="sub">Revenue</span></h3>
+      <div style="font-size:11.5px;color:var(--muted);">Monthly Revenue Target</div>
+      <div class="target-amt" id="targetAmt">&#8377;0</div>
+      <div class="target-row"><span class="sw" style="background:var(--green);"></span> Achieved <b id="targetAchieved">&#8377;0</b></div>
+      <div class="target-row"><span class="sw" style="background:#cbd5e1;"></span> Remaining <b id="targetRemain">&#8377;0</b></div>
+      <div class="mini-progress"><div id="targetBar" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--muted);text-align:right;" id="targetPct">0% of target</div>
+    </div>
+    <div class="card">
+      <h3>&#9878; Lead Funnel</h3>
+      <div class="funnel" id="leadFunnel"></div>
+    </div>
+    <div class="card">
+      <h3>&#128200; Daily Lead Trend</h3>
+      <div class="chart-box"><canvas id="leadTrendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>&#128205; Lead Sources</h3>
+      <div class="chart-box"><canvas id="sourceChart"></canvas></div>
+      <div class="legend" id="sourceLegend"></div>
+    </div>
+  </div>
+
+  <!-- SECTION: QUOTATION ANALYTICS -->
+  <div class="section-title"><span class="dot" style="background:var(--teal);"></span>Quotation Analytics</div>
+  <div class="grid g-4">
+    <div class="card">
+      <h3>&#128196; Quotations by Service / Category</h3>
+      <div class="chart-box"><canvas id="quoteServiceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>&#128176; Quotation Value by Service</h3>
+      <div class="vfunnel" id="quoteValueFunnel"></div>
+    </div>
+    <div class="card">
+      <h3>&#128209; Service Wise Quotation Details</h3>
+      <div style="overflow-x:auto;max-height:250px;overflow-y:auto;">
+        <table id="quoteTable">
+          <thead><tr><th>Service / Order</th><th>Quotes</th><th>Quoted</th><th>Accp.</th><th>Pend.</th><th>Rej.</th><th>Conv.</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128202; Quote to Deal Conversion Rate</h3>
+      <div class="gauge-wrap">
+        <canvas id="quoteConvChart"></canvas>
+        <div class="gauge-center"><div class="big" id="quoteConvPct">0%</div><div style="font-size:10.5px;color:var(--muted);" id="quoteConvSub"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: DEALS & REVENUE -->
+  <div class="section-title"><span class="dot" style="background:var(--green);"></span>Deals &amp; Revenue</div>
+  <div class="grid g-deal">
+    <div class="card">
+      <h3>&#129309; Deals Created vs Deal Revenue <span class="sub">&#9632; Deals &nbsp; &#9679; Revenue</span></h3>
+      <div class="chart-box tall"><canvas id="dealRevChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>&#128190; Revenue by Service Category</h3>
+      <div id="revByCategory" style="max-height:230px;overflow-y:auto;"></div>
+    </div>
+    <div class="card">
+      <h3>&#9889; Priority Breakdown</h3>
+      <div id="priorityBreakdown"></div>
+      <div class="legend">
+        <span><i style="background:var(--red)"></i>High</span>
+        <span><i style="background:var(--orange)"></i>Medium</span>
+        <span><i style="background:var(--green)"></i>Low</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128200; Daily Revenue Trend <span class="sub">&#9632; Revenue &nbsp; &#9632; Collected</span></h3>
+      <div class="chart-box tall"><canvas id="revTrendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>&#127974; Total vs Collected Revenue</h3>
+      <div class="rev-box" style="background:#eff6ff;">
+        <div class="ric" style="background:var(--blue);">&#3647;</div>
+        <div><div class="t">Total Deal Value</div><div class="v" style="color:var(--blue);" id="totalDealValue">&#8377;0</div></div>
+      </div>
+      <div class="rev-box" style="background:#f0fdf4;">
+        <div class="ric" style="background:var(--green);">&#10003;</div>
+        <div><div class="t">Net Collected Revenue</div><div class="v" style="color:var(--green);" id="collectedRev">&#8377;0</div></div>
+      </div>
+      <div class="rev-box" style="background:#fff7ed;margin-bottom:0;">
+        <div class="ric" style="background:var(--orange);">&#9203;</div>
+        <div><div class="t">Outstanding Revenue</div><div class="v" style="color:var(--orange);" id="outstandingRev">&#8377;0</div></div>
+      </div>
+      <div style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:5px;"><span>Collection Rate</span><b id="collectRate" style="color:#334155;">0%</b></div>
+        <div class="mini-progress"><div id="collectBar" style="width:0%;background:var(--green);"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: ORDERS & PAYMENTS -->
+  <div class="section-title"><span class="dot" style="background:var(--purple);"></span>Orders &amp; Payments</div>
+  <div class="grid g-4">
+    <div class="card">
+      <h3>&#128230; Order Status</h3>
+      <div class="chart-box short"><canvas id="orderStatusChart"></canvas></div>
+      <div class="legend" id="orderLegend"></div>
+    </div>
+    <div class="card">
+      <h3>&#128736; Orders &amp; Stage Progress <span class="sub">by service</span></h3>
+      <div id="orderProgress" style="max-height:230px;overflow-y:auto;"></div>
+      <div class="legend">
+        <span><i style="background:#94a3b8"></i>Pending</span>
+        <span><i style="background:var(--blue)"></i>In Progress</span>
+        <span><i style="background:var(--green)"></i>Completed</span>
+        <span><i style="background:var(--orange)"></i>On Hold</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128179; Payment History</h3>
+      <div style="overflow-x:auto;max-height:250px;overflow-y:auto;">
+        <table id="paymentTable">
+          <thead><tr><th>Date</th><th>Deal</th><th>Service</th><th>Mode</th><th>Amount</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128176; Collection Trend <span class="sub">cumulative collected vs invoiced</span></h3>
+      <div class="chart-box short"><canvas id="collectionChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SECTION: TEAMS & ACTIVITY -->
+  <div class="section-title"><span class="dot" style="background:var(--pink);"></span>Team Activity &amp; Recent CRM Activity</div>
+  <div class="grid g-bottom">
+    <div class="card">
+      <h3><span>&#128101; Sales Team Activity</span><span class="pill blue">Sales Team</span></h3>
+      <div style="overflow-x:auto;">
+        <table id="salesTable">
+          <thead><tr><th>User</th><th>Leads</th><th>Qual.</th><th>Conv.</th><th>Conv %</th><th>Quotes</th><th>Deals</th><th>Deal Value</th><th>Revenue</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3><span>&#127970; Operations Team Activity</span><span class="pill purple">Operations</span></h3>
+      <div style="overflow-x:auto;">
+        <table id="opsTable">
+          <thead><tr><th>User</th><th>Orders Upd.</th><th>Stages Comp.</th><th>Pending Stages</th><th>Overdue</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128449; Deals Progress</h3>
+      <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+        <table id="dealProgressTable">
+          <thead><tr><th>Deal</th><th>Service</th><th>Priority</th><th>Progress</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128337; Recent CRM Activity</h3>
+      <div class="feed" id="activityFeed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DRILL-DOWN MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head"><h2 id="modalTitle">Details</h2><button class="modal-close" onclick="closeModal()">&#10005;</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SEEDED RANDOM + DUMMY DATA GENERATION
+============================================================ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rnd = mulberry32(20261019);
+const pick = arr => arr[Math.floor(rnd()*arr.length)];
+const ri = (min,max)=>Math.floor(rnd()*(max-min+1))+min;
+
+const SERVICES=["Private Limited Company","LLP Registration","Trademark","Startup India Registration","ISO Certification","GST Filing","FSSAI License","Annual Compliance","Website Development","Other"];
+const SERVICE_COLORS=["#2563eb","#0ea5e9","#14b8a6","#f59e0b","#8b5cf6","#ec4899","#22c55e","#f97316","#6366f1","#94a3b8"];
+const SOURCES=["Google Ads","Website","Referral","Just Dial"];
+const SOURCE_COLORS=["#2563eb","#14b8a6","#f59e0b","#8b5cf6"];
+const SALES_USERS=[{name:"Nancy Singh",dept:"Sales"},{name:"Sneha Choudhury",dept:"Sales"},{name:"Tanu Kumari",dept:"Sales"},{name:"Arjun Mehta",dept:"Sales"},{name:"Priya Sharma",dept:"Sales"}];
+const OPS_USERS=[{name:"Gaurav Pant",dept:"Operations"},{name:"Siddharth Upadhyay",dept:"Operations"},{name:"Aslam Ansari",dept:"Operations"}];
+const ALL_USERS=[...SALES_USERS,...OPS_USERS];
+const PAY_MODES=["UPI","Bank Transfer","Credit Card","Cash","Cheque"];
+const PRIORITIES=["High","Medium","Low"];
+
+const DAYS_BACK=120;
+const today=new Date(); today.setHours(0,0,0,0);
+function dayN(n){const d=new Date(today); d.setDate(d.getDate()-n); return d;}
+function fmtD(d){return d.toISOString().slice(0,10);}
+function fmtIN(n){
+  if(n>=10000000) return "\u20B9"+(n/10000000).toFixed(2)+" Cr";
+  if(n>=100000) return "\u20B9"+(n/100000).toFixed(2)+" L";
+  return "\u20B9"+Math.round(n).toLocaleString("en-IN");
+}
+function fmtN(n){return n.toLocaleString("en-IN");}
+
+// weighted service pick
+function pickService(){
+  const w=[18,12,11,8,7,14,8,9,8,5]; let t=w.reduce((a,b)=>a+b,0), r=rnd()*t;
+  for(let i=0;i<w.length;i++){ r-=w[i]; if(r<=0) return SERVICES[i]; } return SERVICES[0];
+}
+
+const leads=[],quotations=[],deals=[],orders=[],payments=[],activities=[];
+let idL=1000,idQ=2000,idD=3000,idO=4000,idP=5000;
+
+for(let d=DAYS_BACK;d>=0;d--){
+  const date=dayN(d);
+  // seasonal-ish volume
+  const base = 4 + Math.round(1.2*Math.sin(d/9)+0.5*Math.sin(d/23+1));
+  const nLeads = Math.max(0, base + ri(-1,2));
+  for(let i=0;i<nLeads;i++){
+    const user=pick(SALES_USERS);
+    const lead={id:"LD-"+(idL++),date:new Date(date),user:user.name,dept:user.dept,
+      source:(rnd()<0.42?"Google Ads":rnd()<0.6?"Website":rnd()<0.85?"Referral":"Just Dial"),
+      status:"New", name:"Lead #"+(idL)};
+    // status evolves
+    const r=rnd();
+    if(r<0.50) lead.status="Qualified";
+    if(r<0.26) lead.status="Converted";
+    if(r>0.80) lead.status="Unqualified";
+    leads.push(lead);
+    activities.push({time:new Date(date.getTime()+ri(9,18)*3600000),emp:lead.user,action:"Lead updated",rec:lead.id,type:"lead"});
+
+    if(lead.status!=="Unqualified" && rnd()<0.72){
+      const nq=ri(1,2);
+      for(let q=0;q<nq;q++){
+        const svc=pickService();
+        const qt={id:"QT-"+(idQ++),leadId:lead.id,date:new Date(date.getTime()+q*86400000*ri(0,2)),user:lead.user,dept:lead.dept,
+          service:svc,value:ri(8,260)*1000+ri(0,999),
+          status:rnd()<0.30?"Accepted":(rnd()<0.62?"Pending":"Rejected")};
+        quotations.push(qt);
+        activities.push({time:new Date(qt.date.getTime()+ri(9,18)*3600000),emp:lead.user,action:"Quotation created",rec:qt.id,type:"quote"});
+
+        if(qt.status==="Accepted" && rnd()<0.62){
+          const pr = rnd()<0.28?"High":(rnd()<0.7?"Medium":"Low");
+          const dl={id:"DL-"+(idD++),leadId:lead.id,quoteId:qt.id,date:new Date(qt.date.getTime()+86400000*ri(0,4)),
+            user:lead.user,dept:lead.dept,service:qt.service,value:Math.round(qt.value*(0.85+rnd()*0.4)),
+            priority:pr,progress:ri(10,100),status:rnd()<0.45?"Completed":(rnd()<0.75?"In Progress":"On Hold")};
+          if(dl.status==="Completed") dl.progress=100;
+          deals.push(dl);
+          activities.push({time:new Date(dl.date.getTime()+ri(9,18)*3600000),emp:lead.user,action:"Deal created",rec:dl.id,type:"deal"});
+
+          const no=ri(1,3);
+          for(let o=0;o<no;o++){
+            const st = dl.status==="Completed" ? (rnd()<0.8?"Completed":"In Progress") : pick(["Pending","In Progress","In Progress","Completed","On Hold"]);
+            const od={id:"OR-"+(idO++),dealId:dl.id,date:new Date(dl.date.getTime()+o*86400000*ri(1,3)),
+              service:dl.service,stage:st,progress:st==="Completed"?100:(st==="In Progress"?ri(25,85):(st==="On Hold"?ri(10,50):ri(0,20))),
+              updatedBy:pick(OPS_USERS).name,dept:"Operations",overdue:rnd()<0.08};
+            orders.push(od);
+            activities.push({time:new Date(od.date.getTime()+ri(9,18)*3600000),emp:od.updatedBy,action:"Order stage updated",rec:od.id,type:"order"});
+          }
+          // payments: 1-3 installments
+          let remaining=dl.value; const np=ri(1,3);
+          for(let p=0;p<np;p++){
+            const isLast=(p===np-1);
+            const amt = isLast&&rnd()<0.6 ? remaining : Math.round(remaining*(0.3+rnd()*0.4)/1000)*1000;
+            if(amt<=0) continue;
+            remaining-=amt;
+            const payAmt = rnd()<0.82 ? amt : Math.round(amt*(0.4+rnd()*0.4)/1000)*1000; // partial collection
+            payments.push({id:"PAY-"+(idP++),dealId:dl.id,date:new Date(dl.date.getTime()+p*86400000*ri(3,15)),
+              service:dl.service,mode:pick(PAY_MODES),invoiced:amt,collected:payAmt,user:dl.user,dept:dl.dept});
+            if(payAmt>0) activities.push({time:new Date(dl.date.getTime()+p*86400000*ri(3,15)+3600000*ri(9,18)),emp:dl.user,action:"Payment received",rec:dl.id,type:"payment"});
+          }
+        }
+      }
+    }
+  }
+}
+
+/* ============================================================
+   FILTER STATE + PERIOD LOGIC
+============================================================ */
+const state={start:null,end:null,user:"all",dept:"all",label:"Last 30 Days"};
+let customFrom=null,customTo=null;
+
+function initFilters(){
+  const uf=document.getElementById("userFilter");
+  ALL_USERS.forEach(u=>{const o=document.createElement("option");o.value=u.name;o.textContent=u.name;uf.appendChild(o);});
+  const df=document.getElementById("deptFilter");
+  ["Sales","Operations"].forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=d;df.appendChild(o);});
+
+  document.getElementById("rangeSelect").addEventListener("change",e=>{
+    const v=e.target.value;
+    document.getElementById("customRange").classList.toggle("show",v==="custom");
+    if(v==="custom"){
+      const from=document.getElementById("dateFrom"),to=document.getElementById("dateTo");
+      if(!from.value){from.value=fmtD(dayN(29));to.value=fmtD(dayN(0));}
+      customFrom=from.value;customTo=to.value;
+      from.onchange=to.onchange=()=>{customFrom=from.value;customTo=to.value;applyFilter("Custom Range");};
+    }
+    applyFilter(e.target.options[e.target.selectedIndex].text);
+  });
+  document.getElementById("userFilter").addEventListener("change",e=>{state.user=e.target.value;renderAll();});
+  document.getElementById("deptFilter").addEventListener("change",e=>{state.dept=e.target.value;renderAll();});
+  document.getElementById("exportBtn").addEventListener("click",exportCSV);
+  applyFilter("Last 30 Days");
+}
+
+function applyFilter(label){
+  const v=document.getElementById("rangeSelect").value;
+  const end=new Date(today); end.setHours(23,59,59,999);
+  let start,days;
+  if(v==="today"){days=1;}
+  else if(v==="7"){days=7;}
+  else if(v==="30"){days=30;}
+  else if(v==="custom"&&customFrom){
+    start=new Date(customFrom+"T00:00:00"); const e2=new Date(customTo+"T23:59:59");
+    days=Math.max(1,Math.round((e2-start)/86400000)+1);
+    state.start=start;state.end=e2;
+  } else {days=30;}
+  if(v!=="custom"){start=new Date(today);start.setDate(start.getDate()-(days-1));state.start=start;state.end=end;}
+  state.label=label||state.label;
+  state.days=days;
+  renderAll();
+}
+
+function inRange(d,s,e){return d>=s&&d<=e;}
+function prevRange(){
+  const len=state.end-state.start;
+  return [new Date(state.start.getTime()-len), new Date(state.start.getTime()-1)];
+}
+function F(arr){ // filter by date + user/dept
+  const [ps,pe]=prevRange();
+  const cur=[],prev=[];
+  arr.forEach(r=>{
+    if(state.user!=="all"&&r.user!==state.user) return;
+    if(state.dept!=="all"&&r.dept!==state.dept) return;
+    if(inRange(r.date,state.start,state.end)) cur.push(r);
+    else if(inRange(r.date,ps,pe)) prev.push(r);
+  });
+  return {cur,prev};
+}
+function delta(cur,prev,invert){
+  if(prev===0&&cur===0) return {txt:"—",cls:"flat"};
+  if(prev===0) return {txt:"New",cls:"up"};
+  const p=((cur-prev)/prev*100);
+  const good=invert?p<0:p>0;
+  return {txt:(p>=0?"+":"")+p.toFixed(1)+"%",cls:good?"up":"down"};
+}
+
+/* ============================================================
+   RENDER: KPI CARDS
+============================================================ */
+const KPI_DEFS=[
+  {key:"leads",label:"New Leads",icon:"&#128100;",color:"#2563eb",get:f=>f.cur.length,stat:l=>l.status==="New"},
+  {key:"qualified",label:"Qualified Leads",icon:"&#10003;",color:"#16a34a",get:f=>f.cur.filter(r=>r.status==="Qualified"||r.status==="Converted").length},
+  {key:"converted",label:"Converted Leads",icon:"&#11088;",color:"#8b5cf6",get:f=>f.cur.filter(r=>r.status==="Converted").length},
+  {key:"unqualified",label:"Unqualified Leads",icon:"&#10005;",color:"#ef4444",get:f=>f.cur.filter(r=>r.status==="Unqualified").length,invert:true},
+  {key:"convrate",label:"Conversion Rate",icon:"&#128202;",color:"#0ea5e9",isRate:true,
+    cur:f=>f.cur.length? f.cur.filter(r=>r.status==="Converted").length/f.cur.length*100:0,
+    prv:f=>f.prev.length? f.prev.filter(r=>r.status==="Converted").length/f.prev.length*100:0},
+  {key:"quotes",label:"Quotations Created",icon:"&#128196;",color:"#f59e0b",get:f=>f.cur.length},
+  {key:"deals",label:"Deals Created",icon:"&#129309;",color:"#ec4899",get:f=>f.cur.length},
+  {key:"payments",label:"Payments Received",icon:"&#128176;",color:"#14b8a6",get:f=>f.cur.length},
+];
+
+function renderKPIs(){
+  const fl=F(leads),fq=F(quotations),fd=F(deals),fp=F(payments); // payments filtered on deal owner
+  const dataMap={leads:fl,qualified:fl,converted:fl,unqualified:fl,convrate:fl,quotes:fq,deals:fd,payments:fp};
+  let html="";
+  KPI_DEFS.forEach(def=>{
+    let cur,prev,d;
+    const f=dataMap[def.key];
+    if(def.isRate){cur=def.cur(f);prev=def.prv(f);d=delta(cur,prev);}
+    else{
+      const g=def.get;
+      // For status KPIs, "get" needs cur/prev separately
+      if(def.key==="leads"){cur=f.cur.length;prev=f.prev.length;}
+      else if(def.key==="qualified"){cur=f.cur.filter(r=>r.status==="Qualified"||r.status==="Converted").length;prev=f.prev.filter(r=>r.status==="Qualified"||r.status==="Converted").length;}
+      else if(def.key==="converted"){cur=f.cur.filter(r=>r.status==="Converted").length;prev=f.prev.filter(r=>r.status==="Converted").length;}
+      else if(def.key==="unqualified"){cur=f.cur.filter(r=>r.status==="Unqualified").length;prev=f.prev.filter(r=>r.status==="Unqualified").length;}
+      else {cur=g({cur:f.cur});prev=g({cur:f.prev});}
+      d=delta(cur,prev,def.invert);
+    }
+    const val = def.isRate? `<small>${cur.toFixed(1)}%</small>` : (def.key==="leads"||def.key==="qualified"? fmtN(cur):fmtN(cur));
+    // For "New Leads" KPI screenshot shows total in period; keep total leads in period:
+    let display=cur;
+    if(def.key==="leads"){display=f.cur.length;}
+    html+=`<div class="kpi" onclick="drillKPI('${def.key}')">
+      <div class="kpi-head"><span class="icon" style="background:${def.color}">${def.icon}</span>${def.label}</div>
+      <div class="value">${def.isRate? cur.toFixed(1)+"%" : fmtN(display)}</div>
+      <div class="delta ${d.cls}">${d.txt} <span class="prev">vs previous ${state.days} day${state.days>1?"s":""}</span></div>
+    </div>`;
+  });
+  document.getElementById("kpiGrid").innerHTML=html;
+}
+
+/* ============================================================
+   RENDER: LEAD ANALYTICS
+============================================================ */
+const charts={};
+function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+
+function renderLeadAnalytics(fl){
+  const cur=fl.cur,prev=fl.prev;
+  // Funnel
+  const total=cur.length, qual=cur.filter(l=>l.status==="Qualified"||l.status==="Converted").length, conv=cur.filter(l=>l.status==="Converted").length;
+  const stages=[["New Leads",total,"#2563eb",100],["Qualified",qual,"#16a34a",78],["Converted",conv,"#f59e0b",56]];
+  document.getElementById("leadFunnel").innerHTML=stages.map((s,i)=>
+    `<div class="stage" style="background:${s[2]};width:${s[3]}%" onclick="drillLeads('${s[0]}')"><b>${fmtN(s[1])}</b>${s[0]}${i<2?'<div class="funnel-arrow" style="color:#fff;opacity:.8">&#9660;</div>':""}</div>`
+  ).join("");
+
+  // Daily trend — last up to 30 buckets of the range
+  const buckets=buildBuckets(cur);
+  const bQual=buildBuckets(cur.filter(l=>l.status==="Qualified"||l.status==="Converted"));
+  const bConv=buildBuckets(cur.filter(l=>l.status==="Converted"));
+  mkChart("leadTrendChart",{type:"line",data:{labels:buckets.map(b=>b.lbl),datasets:[
+    {label:"New Leads",data:buckets.map(b=>b.v),borderColor:"#2563eb",backgroundColor:"rgba(37,99,235,.12)",fill:true,tension:.35,pointRadius:2},
+    {label:"Qualified",data:bQual.map(b=>b.v),borderColor:"#16a34a",backgroundColor:"rgba(22,163,74,.10)",fill:true,tension:.35,pointRadius:2},
+    {label:"Converted",data:bConv.map(b=>b.v),borderColor:"#f59e0b",tension:.35,pointRadius:2}]},
+    options:chartOpts()});
+
+  // Sources donut
+  const srcCounts=SOURCES.map(s=>cur.filter(l=>l.source===s).length);
+  mkChart("sourceChart",{type:"doughnut",data:{labels:SOURCES,datasets:[{data:srcCounts,backgroundColor:SOURCE_COLORS,borderWidth:2,borderColor:"#fff"}]},
+    options:{cutout:"62%",plugins:{legend:{display:false}},onClick:(e,els)=>{if(els.length)drillByField(leadsFiltered(),"source",SOURCES[els[0].index],"Leads — "+SOURCES[els[0].index]);}}});
+  const tot=srcCounts.reduce((a,b)=>a+b,0)||1;
+  document.getElementById("sourceLegend").innerHTML=SOURCES.map((s,i)=>
+    `<span style="cursor:pointer;flex:1;" onclick="drillByField(leadsFiltered(),'source','${s}','Leads — ${s}')"><i style="background:${SOURCE_COLORS[i]}"></i>${s} <b style="color:#334155">${fmtN(srcCounts[i])}</b> (${Math.round(srcCounts[i]/tot*100)}%)</span>`).join("");
+
+  // Target
+  const collectedCur=F(payments).cur.reduce((a,p)=>a+p.collected,0);
+  const target=Math.round(5000000/30*state.days);
+  document.getElementById("targetAmt").textContent=fmtIN(target);
+  document.getElementById("targetAchieved").textContent=fmtIN(collectedCur);
+  document.getElementById("targetRemain").textContent=fmtIN(Math.max(0,target-collectedCur));
+  const pct=Math.min(100,Math.round(collectedCur/target*100))||0;
+  document.getElementById("targetBar").style.width=pct+"%";
+  document.getElementById("targetPct").textContent=pct+"% of target";
+}
+
+function leadsFiltered(){return F(leads).cur;}
+function buildBuckets(arr){
+  const days=state.days;
+  const step=days>45?7:days>14?3:1; // bucket size
+  const buckets=[];
+  const s=new Date(state.start);
+  for(let d=new Date(s);d<=state.end;d.setDate(d.getDate()+step)){
+    const from=new Date(d),to=new Date(d);to.setDate(to.getDate()+step-1);to.setHours(23,59,59);
+    const lbl=step===1? from.getDate()+"/"+(from.getMonth()+1) : from.getDate()+"/"+(from.getMonth()+1);
+    buckets.push({lbl,v:arr.filter(r=>inRange(r.date,from,to)).length});
+    if(buckets.length>60)break;
+  }
+  return buckets;
+}
+function chartOpts(){
+  return {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9.5},color:"#94a3b8",maxRotation:0,autoSkip:true,maxTicksLimit:10}},
+            y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:9.5},color:"#94a3b8",precision:0}}}};
+}
+
+/* ============================================================
+   RENDER: QUOTATION ANALYTICS
+============================================================ */
+function renderQuoteAnalytics(fq,fd){
+  const cur=fq.cur;
+  // by service bar
+  const counts=SERVICES.map(s=>cur.filter(q=>q.service===s).length);
+  mkChart("quoteServiceChart",{type:"bar",data:{labels:SERVICES.map(s=>s.length>12?s.slice(0,11)+"…":s),datasets:[{data:counts,backgroundColor:"#2563eb",borderRadius:4}]},
+    options:{...chartOpts(),onClick:(e,els)=>{if(els.length)drillByField(cur,"service",SERVICES[els[0].index],"Quotations — "+SERVICES[els[0].index]);}}});
+
+  // value funnel
+  const svcVals=SERVICES.map((s,i)=>({s,v:cur.filter(q=>q.service===s).reduce((a,q)=>a+q.value,0),c:SERVICE_COLORS[i]}))
+    .filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,6);
+  const maxV=svcVals[0]?svcVals[0].v:1;
+  document.getElementById("quoteValueFunnel").innerHTML=svcVals.map(x=>
+    `<div class="row" onclick="drillByField(cur('${ 'quotes'}'),'service','${x.s}','Quotations — ${x.s}')">
+      <span class="lbl" title="${x.s}">${x.s}</span>
+      <span class="bar-wrap"><span class="bar" style="width:${Math.max(4,x.v/maxV*100)}%;background:${x.c}"></span></span>
+      <span class="val">${fmtIN(x.v)}</span></div>`).join("");
+
+  // table
+  const rows=SERVICES.map(s=>{
+    const qs=cur.filter(q=>q.service===s);
+    if(!qs.length)return null;
+    const acc=qs.filter(q=>q.status==="Accepted").length,pend=qs.filter(q=>q.status==="Pending").length,rej=qs.filter(q=>q.status==="Rejected").length;
+    return {s,n:qs.length,val:qs.reduce((a,q)=>a+q.value,0),acc,pend,rej,conv:qs.length?Math.round(acc/qs.length*100):0};
+  }).filter(Boolean).sort((a,b)=>b.n-a.n);
+  document.querySelector("#quoteTable tbody").innerHTML=rows.map(r=>
+    `<tr class="clickable" onclick="drillByField(quotationsFiltered(),'service','${r.s}','Quotations — ${r.s}')">
+      <td style="font-weight:600;">${r.s}</td><td>${r.n}</td><td>${fmtIN(r.val)}</td>
+      <td><span class="pill green">${r.acc}</span></td><td><span class="pill orange">${r.pend}</span></td>
+      <td><span class="pill red">${r.rej}</span></td><td>${r.conv}%</td></tr>`).join("");
+
+  // gauge
+  const dq=fd.cur.length,dqTotal=cur.length||1;
+  const rate=Math.round(dq/dqTotal*100);
+  document.getElementById("quoteConvPct").textContent=rate+"%";
+  document.getElementById("quoteConvSub").textContent=`${dq} Deals / ${dqTotal} Quotations`;
+  mkChart("quoteConvChart",{type:"doughnut",data:{datasets:[{data:[rate,100-rate],backgroundColor:["#2563eb","#e8edf5"],borderWidth:0,cutout:"75%",circumference:220,rotation:250}]},
+    options:{plugins:{legend:{display:false}}}});
+}
+function quotationsFiltered(){return F(quotations).cur;}
+function cur(k){return k==="quotes"?quotationsFiltered():leadsFiltered();}
+
+/* ============================================================
+   RENDER: DEALS & REVENUE
+============================================================ */
+function renderDealsRevenue(fd){
+  const curD=fd.cur;
+  // combo: deals vs revenue by service
+  const svc=SERVICES.map((s,i)=>({s,n:curD.filter(d=>d.service===s).length,v:curD.filter(d=>d.service===s).reduce((a,d)=>a+d.value,0)}));
+  mkChart("dealRevChart",{
+    type:"bar",
+    data:{labels:svc.map(x=>x.s.length>9?x.s.slice(0,8)+"…":x.s),datasets:[
+      {type:"bar",label:"Deals",data:svc.map(x=>x.n),backgroundColor:"#f59e0b",borderRadius:3,yAxisID:"y"},
+      {type:"line",label:"Revenue",data:svc.map(x=>x.v),borderColor:"#2563eb",backgroundColor:"#2563eb",tension:.3,pointRadius:3,yAxisID:"y1"}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},color:"#94a3b8",maxRotation:45}},
+        y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:9},color:"#94a3b8",precision:0}},
+        y1:{position:"right",beginAtZero:true,grid:{display:false},ticks:{font:{size:9},color:"#94a3b8",callback:v=>v>=1000?(v/1000)+"k":v}}}}});
+
+  // revenue by category
+  const catVals=SERVICES.map(s=>({s,v:curD.filter(d=>d.service===s).reduce((a,d)=>a+d.value,0)})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const totV=catVals.reduce((a,x)=>a+x.v,0)||1,maxC=catVals[0]?catVals[0].v:1;
+  document.getElementById("revByCategory").innerHTML=catVals.map(x=>
+    `<div class="hbar-row" onclick="drillDealsByService('${x.s}')">
+      <span class="hb-lbl" title="${x.s}">${x.s}</span>
+      <span class="hb-track"><span class="hb-fill" style="width:${Math.max(4,x.v/maxC*100)}%"></span></span>
+      <span class="hb-val">${fmtIN(x.v)} (${Math.round(x.v/totV*100)}%)</span></div>`).join("")||'<div style="color:#94a3b8;font-size:12px;">No deals in this period</div>';
+
+  // priority
+  const prio=[["High","#ef4444"],["Medium","#f59e0b"],["Low","#16a34a"]].map(([p,c])=>{
+    const ds=curD.filter(d=>d.priority===p);
+    return {p,c,n:ds.length,v:ds.reduce((a,d)=>a+d.value,0)};
+  });
+  const pt=prio.reduce((a,x)=>a+x.v,0)||1;
+  document.getElementById("priorityBreakdown").innerHTML=prio.map(x=>
+    `<div class="prio-row"><span class="pdot" style="background:${x.c}"></span><span class="pname">${x.p}</span>
+     <span class="pstat">${x.n} deals · ${fmtIN(x.v)}</span><b>${Math.round(x.v/pt*100)}%</b></div>`).join("");
+
+  // daily revenue trend (revenue vs collected)
+  const buckets=buildBuckets(curD);
+  const payByDeal={}; payments.forEach(p=>{payByDeal[p.dealId]=(payByDeal[p.dealId]||0)+p.collected;});
+  const collectedBuckets=[];
+  const days=state.days,step=days>45?7:days>14?3:1;
+  const s0=new Date(state.start);
+  for(let d=new Date(s0);d<=state.end;d.setDate(d.getDate()+step)){
+    const from=new Date(d),to=new Date(d);to.setDate(to.getDate()+step-1);to.setHours(23,59,59);
+    const dIds=new Set(curD.filter(x=>inRange(x.date,from,to)).map(x=>x.id));
+    let col=0; payments.forEach(p=>{if(dIds.has(p.dealId))col+=p.collected;});
+    collectedBuckets.push(col);
+    if(collectedBuckets.length>60)break;
+  }
+  mkChart("revTrendChart",{type:"bar",data:{labels:buckets.map(b=>b.lbl),datasets:[
+    {label:"Revenue",data:buckets.map(b=>b.v),backgroundColor:"#2563eb",borderRadius:3},
+    {label:"Collected",data:collectedBuckets,backgroundColor:"#16a34a",borderRadius:3}]},
+    options:{...chartOpts(),scales:{x:{grid:{display:false},ticks:{font:{size:9},color:"#94a3b8",maxTicksLimit:10}},
+      y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:9},color:"#94a3b8",callback:v=>v>=1000?(v/1000)+"k":v}}}}});
+
+  // totals
+  const totalV=curD.reduce((a,d)=>a+d.value,0);
+  const dIds=new Set(curD.map(d=>d.id));
+  const collected=payments.filter(p=>dIds.has(p.dealId)).reduce((a,p)=>a+p.collected,0);
+  document.getElementById("totalDealValue").textContent=fmtIN(totalV);
+  document.getElementById("collectedRev").textContent=fmtIN(collected);
+  document.getElementById("outstandingRev").textContent=fmtIN(Math.max(0,totalV-collected));
+  const cr=totalV?Math.round(collected/totalV*100):0;
+  document.getElementById("collectRate").textContent=cr+"%";
+  document.getElementById("collectBar").style.width=cr+"%";
+}
+function dealsFiltered(){return F(deals).cur;}
+function drillDealsByService(s){drillByField(dealsFiltered(),"service",s,"Deals — "+s);}
+
+/* ============================================================
+   RENDER: ORDERS & PAYMENTS
+============================================================ */
+function renderOrdersPayments(fd){
+  const dIds=new Set(fd.cur.map(d=>d.id));
+  const curO=orders.filter(o=>dIds.has(o.dealId));
+  const curP=payments.filter(p=>dIds.has(p.dealId));
+  // status donut
+  const stNames=["Pending","In Progress","Completed","On Hold"];
+  const stColors=["#94a3b8","#2563eb","#16a34a","#f59e0b"];
+  const stCounts=stNames.map(s=>curO.filter(o=>o.stage===s).length);
+  mkChart("orderStatusChart",{type:"doughnut",data:{labels:stNames,datasets:[{data:stCounts,backgroundColor:stColors,borderWidth:2,borderColor:"#fff"}]},
+    options:{cutout:"60%",plugins:{legend:{display:false}},onClick:(e,els)=>{if(els.length)drillOrdersByStage(stNames[els[0].index]);}}});
+  const totO=stCounts.reduce((a,b)=>a+b,0)||1;
+  document.getElementById("orderLegend").innerHTML=stNames.map((s,i)=>
+    `<span style="cursor:pointer;" onclick="drillOrdersByStage('${s}')"><i style="background:${stColors[i]}"></i>${s} <b style="color:#334155">${stCounts[i]}</b> (${Math.round(stCounts[i]/totO*100)}%)</span>`).join("");
+
+  // stage progress by service
+  const svcRows=SERVICES.map(s=>({s,os:curO.filter(o=>o.service===s)})).filter(x=>x.os.length);
+  document.getElementById("orderProgress").innerHTML=svcRows.map(x=>{
+    const c=stNames.map(s=>x.os.filter(o=>o.stage===s).length);
+    const tot=x.os.length;
+    return `<div class="order-row" onclick="drillByField(curO(),'service','${x.s}','Orders — ${x.s}')">
+      <div class="o-lbl"><span>${x.s}</span><span>${tot} orders</span></div>
+      <div class="o-track">${c.map((n,i)=>n?`<div class="o-seg" style="width:${n/tot*100}%;background:${stColors[i]}" title="${stNames[i]}: ${n}">${n/tot>0.12?n:""}</div>`:"").join("")}</div></div>`;
+  }).join("")||'<div style="color:#94a3b8;font-size:12px;">No orders in this period</div>';
+
+  // payment history
+  const sortedP=[...curP].sort((a,b)=>b.date-a.date).slice(0,25);
+  document.querySelector("#paymentTable tbody").innerHTML=sortedP.map(p=>
+    `<tr><td>${p.date.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}</td>
+     <td style="color:var(--blue);font-weight:600;cursor:pointer;" onclick="drillDeal('${p.dealId}')">${p.dealId}</td>
+     <td>${p.service.length>16?p.service.slice(0,15)+"…":p.service}</td><td><span class="pill gray">${p.mode}</span></td>
+     <td style="font-weight:700;">${fmtIN(p.collected)}${p.collected<p.invoiced?` <span style="color:var(--orange);font-size:10px;">(partial)</span>`:""}</td></tr>`).join("")||'<tr><td colspan="5" style="color:#94a3b8;">No payments</td></tr>';
+
+  // collection trend cumulative
+  const stepB=state.days>45?7:state.days>14?3:1;
+  const labels=[],cumCol=[],cumInv=[];
+  let cc=0,ci=0;
+  const invByDeal={},colByDeal={};
+  curP.forEach(p=>{invByDeal[p.dealId]=(invByDeal[p.dealId]||0)+p.invoiced;colByDeal[p.dealId]=(colByDeal[p.dealId]||0)+p.collected;});
+  const invP=[...curP].sort((a,b)=>a.date-b.date);
+  for(let d=new Date(state.start);d<=state.end;d.setDate(d.getDate()+stepB)){
+    const to=new Date(d);to.setDate(to.getDate()+stepB-1);to.setHours(23,59,59);
+    cc+=curP.filter(p=>inRange(p.date,new Date(d),to)).reduce((a,p)=>a+p.collected,0);
+    ci+=curP.filter(p=>inRange(p.date,new Date(d),to)).reduce((a,p)=>a+p.invoiced,0);
+    labels.push(d.getDate()+"/"+(d.getMonth()+1));cumCol.push(cc);cumInv.push(ci);
+    if(labels.length>60)break;
+  }
+  mkChart("collectionChart",{type:"line",data:{labels,datasets:[
+    {label:"Collected",data:cumCol,borderColor:"#16a34a",backgroundColor:"rgba(22,163,74,.12)",fill:true,tension:.3,pointRadius:0},
+    {label:"Invoiced",data:cumInv,borderColor:"#2563eb",tension:.3,pointRadius:0,borderDash:[5,3]}]},
+    options:{...chartOpts(),scales:{x:{grid:{display:false},ticks:{font:{size:9},color:"#94a3b8",maxTicksLimit:8}},
+      y:{beginAtZero:true,grid:{color:"#f1f5f9"},ticks:{font:{size:9},color:"#94a3b8",callback:v=>v>=1000?(v/1000)+"k":v}}}}});
+}
+function ordersCur(){const dIds=new Set(dealsFiltered().map(d=>d.id));return orders.filter(o=>dIds.has(o.dealId));}
+function drillOrdersByStage(stage){drillByField(ordersCur(),"stage",stage,"Orders — "+stage);}
+
+/* ============================================================
+   RENDER: TEAMS & ACTIVITY
+============================================================ */
+const AV_COLORS=["#2563eb","#8b5cf6","#ec4899","#f59e0b","#14b8a6","#ef4444"];
+function avColor(name){let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))|0;return AV_COLORS[Math.abs(h)%AV_COLORS.length];}
+function initials(n){return n.split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();}
+
+function renderTeamsAndFeed(fd){
+  // sales table
+  const fq=F(quotations),fl=F(leads);
+  document.querySelector("#salesTable tbody").innerHTML=SALES_USERS.map(u=>{
+    const l=fl.cur.filter(x=>x.user===u.name),q=fq.cur.filter(x=>x.user===u.name),d=fd.cur.filter(x=>x.user===u.name);
+    const conv=l.length?Math.round(l.filter(x=>x.status==="Converted").length/l.length*100):0;
+    const dv=d.reduce((a,x)=>a+x.value,0);
+    const dIds=new Set(d.map(x=>x.id));
+    const rev=payments.filter(p=>dIds.has(p.dealId)).reduce((a,p)=>a+p.collected,0);
+    return `<tr class="clickable" onclick="drillUser('${u.name}')">
+      <td><span class="avatar" style="background:${avColor(u.name)}">${initials(u.name)}</span><b>${u.name}</b></td>
+      <td>${l.length}</td><td>${l.filter(x=>x.status==="Qualified"||x.status==="Converted").length}</td>
+      <td>${l.filter(x=>x.status==="Converted").length}</td>
+      <td>${conv}%</td><td>${q.length}</td><td>${d.length}</td><td>${fmtIN(dv)}</td><td style="font-weight:700;color:var(--green)">${fmtIN(rev)}</td></tr>`;
+  }).join("");
+
+  // ops table
+  document.querySelector("#opsTable tbody").innerHTML=OPS_USERS.map(u=>{
+    const o=ordersCur().filter(x=>x.updatedBy===u.name);
+    return `<tr><td><span class="avatar" style="background:${avColor(u.name)}">${initials(u.name)}</span><b>${u.name}</b></td>
+      <td>${o.length}</td><td>${o.filter(x=>x.stage==="Completed").length}</td>
+      <td>${o.filter(x=>x.stage==="Pending"||x.stage==="In Progress").length}</td>
+      <td>${o.filter(x=>x.overdue).length}</td></tr>`;
+  }).join("");
+
+  // deal progress
+  const sortedD=[...fd.cur].sort((a,b)=>b.value-a.value).slice(0,20);
+  document.querySelector("#dealProgressTable tbody").innerHTML=sortedD.map(d=>{
+    const pc=d.priority==="High"?"red":d.priority==="Medium"?"orange":"green";
+    const sc=d.status==="Completed"?"green":d.status==="In Progress"?"blue":"orange";
+    const c=d.status==="Completed"?"#16a34a":d.status==="In Progress"?"#2563eb":"#f59e0b";
+    return `<tr class="clickable" onclick="drillDeal('${d.id}')">
+      <td style="color:var(--blue);font-weight:600;">${d.id}</td>
+      <td>${d.service.length>15?d.service.slice(0,14)+"…":d.service}</td>
+      <td><span class="pill ${pc}">${d.priority}</span></td>
+      <td><span class="prog-track"><span class="prog-fill" style="width:${d.progress}%;background:${c}"></span></span>${d.progress}%</td>
+      <td><span class="pill ${sc}">${d.status}</span></td></tr>`;
+  }).join("")||'<tr><td colspan="5" style="color:#94a3b8;">No deals</td></tr>';
+
+  // activity feed
+  const dIds=new Set(fd.cur.map(d=>d.id));
+  const leadIds=new Set(fl.cur.map(l=>l.id));
+  const feed=activities.filter(a=>{
+    if(a.type==="lead")return leadIds.has(a.rec);
+    if(a.type==="deal"||a.type==="payment")return dIds.has(a.rec);
+    if(a.type==="quote")return quotationsFiltered().some(q=>q.id===a.rec);
+    if(a.type==="order")return ordersCur().some(o=>o.id===a.rec);
+    return false;
+  }).sort((a,b)=>b.time-a.time).slice(0,30);
+  document.getElementById("activityFeed").innerHTML=feed.map(a=>
+    `<div class="feed-item"><span class="av" style="background:${avColor(a.emp)}">${initials(a.emp)}</span>
+     <div><div>${a.emp} — ${a.action} <span class="rec" onclick="drillRecord('${a.type}','${a.rec}')">#${a.rec}</span></div>
+     <div class="ft">${a.time.toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></div></div>`).join("")||'<div style="color:#94a3b8;font-size:12px;">No activity</div>';
+}
+
+/* ============================================================
+   DRILL-DOWN MODALS
+============================================================ */
+function drillKPI(key){
+  const map={leads:["status","All","Leads in period"],qualified:["status","Qualified","Qualified Leads"],converted:["status","Converted","Converted Leads"],
+    unqualified:["status","Unqualified","Unqualified Leads"],quotes:null,deals:null,payments:null,convrate:null};
+  if(key==="convrate"){openModal("Conversion Rate — Detail",`<div class="modal-summary">
+    <div class="ms"><div class="t">Leads (current)</div><div class="v">${F(leads).cur.length}</div></div>
+    <div class="ms"><div class="t">Converted</div><div class="v">${F(leads).cur.filter(l=>l.status==="Converted").length}</div></div>
+    <div class="ms"><div class="t">Conversion Rate</div><div class="v">${F(leads).cur.length?(F(leads).cur.filter(l=>l.status==="Converted").length/F(leads).cur.length*100).toFixed(1):0}%</div></div></div>`+recordsTable(F(leads).cur,"lead"));return;}
+  const ds={quotes:[quotationsFiltered(),"Quotations in period","quote"],deals:[dealsFiltered(),"Deals in period","deal"],
+    payments:[paymentsFiltered(),"Payments in period","payment"]}[key];
+  if(ds){openModal(ds[1],recordsTable(ds[0],ds[2]));return;}
+  const m=map[key];
+  if(m){const arr=key==="leads"?F(leads).cur:F(leads).cur.filter(l=>l.status===m[1]);openModal(m[2],recordsTable(arr,"lead"));}
+}
+function paymentsFiltered(){const dIds=new Set(dealsFiltered().map(d=>d.id));return payments.filter(p=>dIds.has(p.dealId));}
+function drillLeads(stageName){
+  const l=F(leads).cur;
+  const arr=stageName==="New Leads"?l:stageName==="Qualified"?l.filter(x=>x.status==="Qualified"||x.status==="Converted"):l.filter(x=>x.status==="Converted");
+  openModal("Lead Funnel — "+stageName,recordsTable(arr,"lead"));
+}
+function drillByField(arr,field,val,title){
+  const filtered=arr.filter(x=>x[field]===val);
+  const type=arr[0]&&arr[0].id? arr[0].id.startsWith("LD")?"lead":arr[0].id.startsWith("QT")?"quote":arr[0].id.startsWith("DL")?"deal":"order":"lead";
+  openModal(title,recordsTable(filtered,type));
+}
+function drillUser(name){
+  const parts=[];
+  const l=F(leads).cur.filter(x=>x.user===name);
+  const q=quotationsFiltered().filter(x=>x.user===name);
+  const d=dealsFiltered().filter(x=>x.user===name);
+  openModal("User Activity — "+name,
+    `<h3 style="font-size:13px;margin-bottom:6px;">Leads (${l.length})</h3>${recordsTable(l,"lead")}
+     <h3 style="font-size:13px;margin:14px 0 6px;">Quotations (${q.length})</h3>${recordsTable(q,"quote")}
+     <h3 style="font-size:13px;margin:14px 0 6px;">Deals (${d.length})</h3>${recordsTable(d,"deal")}`);
+}
+function drillDeal(dealId){
+  const d=deals.find(x=>x.id===dealId); if(!d)return;
+  const lead=leads.find(l=>l.id===d.leadId);
+  const qs=quotations.filter(q=>q.id===d.quoteId);
+  const os=orders.filter(o=>o.dealId===d.id);
+  const ps=payments.filter(p=>p.dealId===d.id);
+  openModal("Deal Detail — "+d.id,
+    `<div class="modal-summary">
+      <div class="ms"><div class="t">Service</div><div class="v" style="font-size:13px;">${d.service}</div></div>
+      <div class="ms"><div class="t">Value</div><div class="v">${fmtIN(d.value)}</div></div>
+      <div class="ms"><div class="t">Priority</div><div class="v" style="font-size:14px;">${d.priority}</div></div>
+      <div class="ms"><div class="t">Status</div><div class="v" style="font-size:14px;">${d.status} (${d.progress}%)</div></div>
+      <div class="ms"><div class="t">Owner</div><div class="v" style="font-size:14px;">${d.user}</div></div></div>
+    <h3 style="font-size:13px;margin-bottom:6px;">Lead</h3>${recordsTable(lead?[lead]:[],"lead")}
+    <h3 style="font-size:13px;margin:14px 0 6px;">Quotation</h3>${recordsTable(qs,"quote")}
+    <h3 style="font-size:13px;margin:14px 0 6px;">Orders (${os.length})</h3>${recordsTable(os,"order")}
+    <h3 style="font-size:13px;margin:14px 0 6px;">Payments (${ps.length})</h3>${recordsTable(ps,"payment")}`);
+}
+function drillRecord(type,id){
+  if(type==="deal"){drillDeal(id);return;}
+  const map={lead:[leads,"lead"],quote:[quotations,"quote"],order:[orders,"order"],payment:[payments,"payment"]};
+  const arr=(map[type]||[[]])[0].filter(x=>x.id===id);
+  openModal("Record — "+id,recordsTable(arr,type));
+}
+function recordsTable(arr,type){
+  const cols={
+    lead:r=>`<tr><td>${r.id}</td><td>${r.date.toLocaleDateString("en-IN")}</td><td>${r.source}</td><td><span class="pill ${r.status==="Converted"?"green":r.status==="Qualified"?"blue":r.status==="Unqualified"?"red":"gray"}">${r.status}</span></td><td>${r.user}</td></tr>`,
+    quote:r=>`<tr><td>${r.id}</td><td>${r.date.toLocaleDateString("en-IN")}</td><td>${r.service}</td><td>${fmtIN(r.value)}</td><td><span class="pill ${r.status==="Accepted"?"green":r.status==="Pending"?"orange":"red"}">${r.status}</span></td><td>${r.user}</td></tr>`,
+    deal:r=>`<tr><td>${r.id}</td><td>${r.date.toLocaleDateString("en-IN")}</td><td>${r.service}</td><td>${fmtIN(r.value)}</td><td><span class="pill ${r.priority==="High"?"red":r.priority==="Medium"?"orange":"green"}">${r.priority}</span></td><td>${r.progress}%</td><td><span class="pill ${r.status==="Completed"?"green":r.status==="In Progress"?"blue":"orange"}">${r.status}</span></td></tr>`,
+    order:r=>`<tr><td>${r.id}</td><td>${r.date.toLocaleDateString("en-IN")}</td><td>${r.service}</td><td><span class="pill ${r.stage==="Completed"?"green":r.stage==="In Progress"?"blue":r.stage==="On Hold"?"orange":"gray"}">${r.stage}</span></td><td>${r.progress}%</td><td>${r.updatedBy}</td></tr>`,
+    payment:r=>`<tr><td>${r.id}</td><td>${r.date.toLocaleDateString("en-IN")}</td><td>${r.dealId}</td><td>${r.service}</td><td>${r.mode}</td><td>${fmtIN(r.invoiced)}</td><td style="font-weight:700;">${fmtIN(r.collected)}</td></tr>`
+  };
+  const heads={
+    lead:"<th>ID</th><th>Date</th><th>Source</th><th>Status</th><th>Owner</th>",
+    quote:"<th>ID</th><th>Date</th><th>Service</th><th>Value</th><th>Status</th><th>Owner</th>",
+    deal:"<th>ID</th><th>Date</th><th>Service</th><th>Value</th><th>Priority</th><th>Progress</th><th>Status</th>",
+    order:"<th>ID</th><th>Date</th><th>Service</th><th>Stage</th><th>Progress</th><th>Updated By</th>",
+    payment:"<th>ID</th><th>Date</th><th>Deal</th><th>Service</th><th>Mode</th><th>Invoiced</th><th>Collected</th>"
+  };
+  if(!arr.length)return '<div style="color:#94a3b8;font-size:12px;">No records</div>';
+  return `<table><thead><tr>${heads[type]}</tr></thead><tbody>${arr.slice(0,200).map(cols[type]).join("")}</tbody></table>
+    ${arr.length>200?`<div style="font-size:11px;color:#94a3b8;margin-top:6px;">Showing first 200 of ${arr.length}</div>`:""}`;
+}
+function openModal(title,bodyHtml){
+  document.getElementById("modalTitle").textContent=title;
+  document.getElementById("modalBody").innerHTML=bodyHtml;
+  document.getElementById("modalBg").classList.add("show");
+}
+function closeModal(){document.getElementById("modalBg").classList.remove("show");}
+document.getElementById("modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal();});
+
+/* ============================================================
+   EXPORT
+============================================================ */
+function exportCSV(){
+  const l=F(leads).cur;
+  let csv="Lead ID,Date,Source,Status,Owner\n"+l.map(r=>`${r.id},${fmtD(r.date)},${r.source},${r.status},${r.user}`).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="leads_export.csv";a.click();
+}
+
+/* ============================================================
+   BOOT
+============================================================ */
+function renderAll(){
+  renderKPIs();
+  renderLeadAnalytics(F(leads));
+  renderQuoteAnalytics(F(quotations),F(deals));
+  renderDealsRevenue(F(deals));
+  renderOrdersPayments(F(deals));
+  renderTeamsAndFeed(F(deals));
+}
+initFilters();
+</script>
+</body>
+</html>
